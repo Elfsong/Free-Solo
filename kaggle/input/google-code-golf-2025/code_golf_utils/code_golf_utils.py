@@ -213,10 +213,60 @@ def show_examples(examples, bgcolor=(255, 255, 255)):
         offset += 2
     ax.set_xticks([])
     ax.set_yticks([])
+    
+def verify_program_lite(task_num, code_path, examples):
+    task_name, task_path = "task_with_imports", code_path
+    spec = importlib.util.spec_from_file_location(task_name, task_path)
+    
+    if spec is None:
+        print("Error: Unable to import task.py.")
+        return
+    module = sys.modules[task_name] = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    if not hasattr(module, "p"):
+        print("Error: Unable to locate function p() in task.py.")
+        return
+    program = getattr(module, "p")
+    if not callable(program):
+        print("Error: Function p() in task.py is not callable.")
+        return
+    
+    def verify(example_subset):
+        right, wrong, expected, error = 0, 0, None, ""
+        for example in example_subset:
+            example_copy = copy.deepcopy(example)
+            try:
+                result = program(example_copy["input"])
+                result = json.dumps(result)
+                result = result.replace("true", "1").replace("false", "0")
+                unsafe_chars = re.compile(r"[^0-9,\[\]\s\.]")
+                if unsafe_chars.search(result):
+                    raise ValueError(f"Invalid output from user code: {result[:500]}")
+                result = json.loads(result)
+                user_output = np.array(result)
+                label_output = np.array(example_copy["output"])
+                if numpy.array_equal(user_output, label_output):
+                    right += 1
+                else:
+                    expected = copy.deepcopy(example)
+                    wrong += 1
+            except:
+                error = traceback.format_exc()
+                wrong += 1
+        if error:
+            print(f"Error: {error}")
+        return right, wrong, expected
 
+    arc_agi_right, arc_agi_wrong, arc_agi_expected = verify(examples["train"] + examples["test"])
+    arc_gen_right, arc_gen_wrong, arc_gen_expected = verify(examples["arc-gen"])
+    
+    if arc_agi_wrong + arc_gen_wrong == 0:
+        return True
+    else:
+        return False
 
-def verify_program(task_num, examples):
-    task_name, task_path = "task_with_imports", "/kaggle/working/task.py"
+def verify_program(task_num, code_path, examples):
+    task_name, task_path = "task_with_imports", code_path
     spec = importlib.util.spec_from_file_location(task_name, task_path)
     if spec is None:
         print("Error: Unable to import task.py.")
