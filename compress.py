@@ -48,27 +48,56 @@ def zip_src(src_code):
             )
     return min(compressed_options, key=lambda x: len(x))
 
+def compress_submission(output_dir):
+    # compress the folder into a zip file
+    with zipfile.ZipFile(f"submission.zip", "w") as zipf:
+        for file in os.listdir(output_dir):
+            zipf.write(f"{output_dir}/{file}", file)
+    print(f"Compressed {output_dir} -> [submission.zip]")
+    
 files = {}
 total_save=0
-input_dir = "./kaggle/original"
+input_dir = "./kaggle/submission_v1"
 output_dir = "./kaggle/submission"
+os.makedirs(output_dir, exist_ok=True)
+
+# delete the existing submission.zip
+if os.path.exists("submission.zip"):
+    os.remove("submission.zip")
+    print("[+] Deleted existing submission.zip")
+    
+print(f"[+] {input_dir} -> {output_dir}")
 
 total_save = 0
-score = 0
+total_score = 0
 
-for task_index in range(1, 401):
+score_dict = {}
+
+for task_index in tqdm(range(1, 401)):
     original_src = open(f'{input_dir}/task' + str(task_index).zfill(3) + '.py','rb').read().strip()
     zipped_src = zip_src(original_src)
     improvement = len(original_src) - len(zipped_src)
     
+    score = 0
     if improvement > 0:
         total_save += improvement
         open(f'{output_dir}/task' + str(task_index).zfill(3) + '.py','wb').write(zipped_src)
-        score += max(1, 2500-len(zipped_src))
+        score = max(1, 2500-len(zipped_src))
     else:
         open(f'{output_dir}/task' + str(task_index).zfill(3) + '.py','wb').write(original_src)
-        score += max(1, 2500-len(original_src))
-        
+        score = max(1, 2500-len(original_src))
+    score_dict[task_index] = score
+    total_score += score
     
-print("Total Compression Save: ", total_save)
-print("Total Score: ", score)
+print("[-] Total Save: ", total_save)
+print("[-] Total Score: ", total_score)
+print("================================================")
+
+# Top-10 tasks
+top_10_tasks = sorted(score_dict.items(), key=lambda x: x[1])[:10]
+print("Top-10 Tasks:")
+for task_index, score in top_10_tasks:
+    print(f"[-] Task {task_index}: {score}")
+
+print("[+] Compressing new submission.zip file...")
+compress_submission(output_dir)

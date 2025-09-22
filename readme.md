@@ -1,9 +1,14 @@
 # Free Solo
 
 ```shell
+# Pull the source code
 kaggle kernels pull elfsong/source-code-for-full-400-solutions
 
-kaggle competitions submit -c google-code-golf-2025 -f submission.zip -m 'test submission'
+# Compress the submission file
+python compress.py
+
+# Submit the submission file
+kaggle competitions submit -c google-code-golf-2025 -f submission.zip -m 'submission'
 ```
 
 ## Respect, Credit and Recognition
